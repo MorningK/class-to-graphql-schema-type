@@ -13,6 +13,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Format Java Class to GraphQL schema type
+ */
 public class Formatter {
   private static final String TYPE_TEMPLATE = """
         type %s {
@@ -25,6 +28,11 @@ public class Formatter {
         }
         """;
 
+  /**
+   * format given class to GraphQL schema type include relative classes and enums
+   * @param sourceClass the class to formatted
+   * @return GraphQL schema type output
+   */
   public static String formatSchemaType(Class<?> sourceClass) {
     if (sourceClass.isEnum()) {
       return formatEnum(sourceClass);
