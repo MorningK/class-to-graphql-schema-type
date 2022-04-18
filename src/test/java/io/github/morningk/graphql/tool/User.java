@@ -1,6 +1,7 @@
 package io.github.morningk.graphql.tool;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import lombok.Getter;
@@ -8,14 +9,27 @@ import lombok.Getter;
 @Getter
 public class User {
   private Long id;
-  private String name;
-  private Boolean admin;
+  private int primaryInt;
+  private long primaryLong;
+  private float primaryFloat;
+  private Double doubleValue;
   private BigDecimal age;
+
+  private char[] chars;
+  private String name;
+
+  private boolean primaryBoolean;
+  private Boolean admin;
+
   private Status status;
+  private Role role;
+  private OffsetDateTime createdAt;
+  private LocalDate birthday;
+
+  private double[] doubleArray;
   private String[] array;
   private Role[] roleArray;
   private List<Role> roles;
-  private OffsetDateTime createdAt;
 
   public enum Status {
     ENABLED,
@@ -33,13 +47,13 @@ public class User {
     return name;
   }
 
-  @ScalarType("String")
+  @Ignored
   public OffsetDateTime getCreatedAt() {
     return createdAt;
   }
 
-  @Ignored
-  public List<Role> getRoles() {
-    return roles;
+  @ScalarType("String")
+  public LocalDate getBirthday() {
+    return birthday;
   }
 }
