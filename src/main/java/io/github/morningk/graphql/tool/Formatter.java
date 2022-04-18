@@ -27,6 +27,7 @@ public class Formatter {
         %s
         }
         """;
+  private static final String SCALAR_TEMPLATE = "scalar %s\n";
 
   /**
    * format given class to GraphQL schema type include relative classes and enums
@@ -34,37 +35,61 @@ public class Formatter {
    * @return GraphQL schema type output
    */
   public static String formatSchemaType(Class<?> sourceClass) {
+    return formatSchemaType(sourceClass, new HashSet<>());
+  }
+
+  private static String formatSchemaType(Class<?> sourceClass, Set<Class<?>> existingSet) {
+    existingSet.add(sourceClass);
+    if (sourceClass.getAnnotation(ScalarType.class) != null) {
+      return String.format(SCALAR_TEMPLATE, sourceClass.getAnnotation(ScalarType.class).value());
+    }
     if (sourceClass.isEnum()) {
       return formatEnum(sourceClass);
     }
     String name = sourceClass.getSimpleName();
     StringBuilder extra = new StringBuilder();
     Set<Class<?>> extraClassSet = new HashSet<>();
+    String fieldDeclaration = formatFieldDeclaration(sourceClass, extraClassSet);
+    for (Class<?> extraClass: extraClassSet) {
+      if (existingSet.contains(extraClass)) {
+        continue;
+      }
+      existingSet.add(extraClass);
+      extra.append(formatSchemaType(extraClass, existingSet));
+    }
+    return String.format(TYPE_TEMPLATE, name, fieldDeclaration, extra);
+  }
+
+  private static String formatFieldDeclaration(Class<?> sourceClass, Set<Class<?>> extraClassSet) {
     Map<String, String> fields = new LinkedHashMap<>();
     for (Field field: sourceClass.getFields()) {
-      fields.put(field.getName(), getFieldSchemaType(field, extraClassSet));
+      if (field.getAnnotation(Ignored.class) == null) {
+        fields.put(field.getName(), getFieldSchemaType(field, extraClassSet));
+      }
     }
     for (Method method: sourceClass.getMethods()) {
       if (needInclude(method)) {
         fields.put(getMethodFieldName(method.getName()), getFieldSchemaType(method, extraClassSet));
       }
     }
-    String fieldDeclaration =
+    return
         fields.entrySet().stream()
-          .map(field -> "\t" + field.getKey() + ": " + field.getValue())
-          .collect(Collectors.joining("\n"));
-    for (Class<?> extraClass: extraClassSet) {
-      extra.append(formatSchemaType(extraClass));
-    }
-    return String.format(TYPE_TEMPLATE, name, fieldDeclaration, extra);
+            .map(field -> "\t" + field.getKey() + ": " + field.getValue())
+            .collect(Collectors.joining("\n"));
   }
 
   private static String getFieldSchemaType(Field field, Set<Class<?>> extra) {
     Class<?> type = field.getType();
-    if (field.getAnnotation(Id.class) != null) {
-      return "ID";
+    String fieldType;
+    if (field.getAnnotation(ScalarType.class) != null) {
+      fieldType = field.getAnnotation(ScalarType.class).value();
+    } else {
+      fieldType = getFieldSchemaType(type, extra);
     }
-    return getFieldSchemaType(type, extra);
+    if (field.getAnnotation(NonNull.class) != null) {
+      return fieldType + "!";
+    }
+    return fieldType;
   }
 
   private static boolean needInclude(Method method) {
@@ -72,6 +97,9 @@ public class Formatter {
       return false;
     }
     if (method.getReturnType().equals(Void.TYPE)) {
+      return false;
+    }
+    if (method.getAnnotation(Ignored.class) != null) {
       return false;
     }
     for (Method objectMethod: Object.class.getMethods()) {
@@ -84,16 +112,23 @@ public class Formatter {
 
   private static String getMethodFieldName(String name) {
     if (name.startsWith("get")) {
-      return name.substring("get".length(), "get".length() + 1).toLowerCase() + name.substring("get".length() + 1);
+      return name.substring("get".length(), "get".length() + 1).toLowerCase()
+          + name.substring("get".length() + 1);
     }
     return name;
   }
 
   private static String getFieldSchemaType(Method method, Set<Class<?>> extra) {
-    if (method.getAnnotation(Id.class) != null) {
-      return "ID";
+    String fieldType;
+    if (method.getAnnotation(ScalarType.class) != null) {
+      fieldType = method.getAnnotation(ScalarType.class).value();
+    } else {
+      fieldType = getFieldSchemaType(method.getReturnType(), extra);
     }
-    return getFieldSchemaType(method.getReturnType(), extra);
+    if (method.getAnnotation(NonNull.class) != null) {
+      return fieldType + "!";
+    }
+    return fieldType;
   }
 
   private static String getFieldSchemaType(Class<?> type, Set<Class<?>> extra) {
@@ -125,13 +160,16 @@ public class Formatter {
     if (isIterableType(type)) {
       return getIterableFieldTypeName(type, extra);
     }
+    extra.add(type);
     return type.getSimpleName();
   }
 
   private static String getIterableFieldTypeName(Class<?> type, Set<Class<?>> extra) {
     if (type.getGenericSuperclass() != null) {
       ParameterizedType parameterizedType = (ParameterizedType) type.getGenericSuperclass();
-      return "[" + getFieldSchemaType((Class<?>) parameterizedType.getActualTypeArguments()[0], extra) + "]";
+      return "["
+          + getFieldSchemaType((Class<?>) parameterizedType.getActualTypeArguments()[0], extra)
+          + "]";
     }
     Type[] parameterizedTypes = type.getGenericInterfaces();
     if (parameterizedTypes.length > 0) {

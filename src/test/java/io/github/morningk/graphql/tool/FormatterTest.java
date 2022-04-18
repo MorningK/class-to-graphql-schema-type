@@ -6,8 +6,6 @@ class FormatterTest {
 
   @Test
   void formatSchemaType() {
-    String result = Formatter.formatSchemaType(User.class);
-    System.out.println("formatSchemaType User:");
-    System.out.println(result);
+    System.out.println(Formatter.formatSchemaType(User.class));
   }
 }

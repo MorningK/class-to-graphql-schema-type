@@ -3,9 +3,10 @@ package io.github.morningk.graphql.tool;
 import lombok.Getter;
 
 @Getter
-public class Role {
+@ScalarType("Permission")
+public class Permission {
   private Integer id;
   private String name;
-  private Permission[] permissions;
-  private User[][] users;
+  private Role[] roles;
+  private User[] users;
 }
