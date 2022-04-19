@@ -56,4 +56,10 @@ public class User {
   public LocalDate getBirthday() {
     return birthday;
   }
+
+  @NonNull
+  @ListType(elementType = Role.class, elementNonNull = true)
+  public List<Role> getRoles() {
+    return roles;
+  }
 }

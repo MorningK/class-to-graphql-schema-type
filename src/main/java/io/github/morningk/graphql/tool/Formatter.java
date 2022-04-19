@@ -17,20 +17,22 @@ import java.util.stream.Collectors;
  * Format Java Class to GraphQL schema type
  */
 public class Formatter {
+
   private static final String TYPE_TEMPLATE = """
-        type %s {
-        %s
-        }
-        %s""";
+      type %s {
+      %s
+      }
+      %s""";
   private static final String ENUM_TEMPLATE = """
-        enum %s {
-        %s
-        }
-        """;
+      enum %s {
+      %s
+      }
+      """;
   private static final String SCALAR_TEMPLATE = "scalar %s\n";
 
   /**
    * format given class to GraphQL schema type include relative classes and enums
+   *
    * @param sourceClass the class to formatted
    * @return GraphQL schema type output
    */
@@ -50,7 +52,7 @@ public class Formatter {
     StringBuilder extra = new StringBuilder();
     Set<Class<?>> extraClassSet = new HashSet<>();
     String fieldDeclaration = formatFieldDeclaration(sourceClass, extraClassSet);
-    for (Class<?> extraClass: extraClassSet) {
+    for (Class<?> extraClass : extraClassSet) {
       if (existingSet.contains(extraClass)) {
         continue;
       }
@@ -62,12 +64,12 @@ public class Formatter {
 
   private static String formatFieldDeclaration(Class<?> sourceClass, Set<Class<?>> extraClassSet) {
     Map<String, String> fields = new LinkedHashMap<>();
-    for (Field field: sourceClass.getFields()) {
+    for (Field field : sourceClass.getFields()) {
       if (field.getAnnotation(Ignored.class) == null) {
         fields.put(field.getName(), getFieldSchemaType(field, extraClassSet));
       }
     }
-    for (Method method: sourceClass.getMethods()) {
+    for (Method method : sourceClass.getMethods()) {
       if (needInclude(method)) {
         fields.put(getMethodFieldName(method.getName()), getFieldSchemaType(method, extraClassSet));
       }
@@ -83,6 +85,9 @@ public class Formatter {
     String fieldType;
     if (field.getAnnotation(ScalarType.class) != null) {
       fieldType = field.getAnnotation(ScalarType.class).value();
+    } else if (field.getAnnotation(ListType.class) != null) {
+      ListType listType = field.getAnnotation(ListType.class);
+      fieldType = getFieldSchemaType(listType, extra);
     } else {
       fieldType = getFieldSchemaType(type, extra);
     }
@@ -90,6 +95,14 @@ public class Formatter {
       return fieldType + "!";
     }
     return fieldType;
+  }
+
+  private static String getFieldSchemaType(ListType listType, Set<Class<?>> extra) {
+    Class<?> elementClass = listType.elementType();
+    return "["
+        + getFieldSchemaType(elementClass, extra)
+        + (listType.elementNonNull() ? "!" : "")
+        + "]";
   }
 
   private static boolean needInclude(Method method) {
@@ -102,7 +115,7 @@ public class Formatter {
     if (method.getAnnotation(Ignored.class) != null) {
       return false;
     }
-    for (Method objectMethod: Object.class.getMethods()) {
+    for (Method objectMethod : Object.class.getMethods()) {
       if (objectMethod.getName().equals(method.getName())) {
         return false;
       }
@@ -122,6 +135,9 @@ public class Formatter {
     String fieldType;
     if (method.getAnnotation(ScalarType.class) != null) {
       fieldType = method.getAnnotation(ScalarType.class).value();
+    } else if (method.getAnnotation(ListType.class) != null) {
+      ListType listType = method.getAnnotation(ListType.class);
+      fieldType = getFieldSchemaType(listType, extra);
     } else {
       fieldType = getFieldSchemaType(method.getReturnType(), extra);
     }
@@ -136,7 +152,7 @@ public class Formatter {
       return "Boolean";
     }
     if (type.equals(Byte.TYPE) || type.equals(Byte.class)
-        ||type.equals(Short.TYPE) || type.equals(Short.class)
+        || type.equals(Short.TYPE) || type.equals(Short.class)
         || type.equals(Integer.TYPE) || type.equals(Integer.class)
         || type.equals(Long.TYPE) || type.equals(Long.class)
         || type.equals(BigInteger.class)) {
@@ -147,7 +163,12 @@ public class Formatter {
         || type.equals(BigDecimal.class)) {
       return "Float";
     }
-    if (type.equals(Character.TYPE) || type.equals(Character.class) || type.equals(String.class)) {
+    if (type.equals(Character.TYPE)
+        || type.equals(Character.class)
+        || type.equals(String.class)
+        || (type.isArray() &&
+        (type.getComponentType().equals(Character.TYPE)
+            || type.getComponentType().equals(Character.class)))) {
       return "String";
     }
     if (type.isEnum()) {
@@ -173,7 +194,7 @@ public class Formatter {
     }
     Type[] parameterizedTypes = type.getGenericInterfaces();
     if (parameterizedTypes.length > 0) {
-      for (Type parameterizedType: parameterizedTypes) {
+      for (Type parameterizedType : parameterizedTypes) {
         if (parameterizedType instanceof ParameterizedType) {
           Type actualType = ((ParameterizedType) parameterizedType).getActualTypeArguments()[0];
           if (actualType instanceof Class) {
@@ -191,7 +212,7 @@ public class Formatter {
       return true;
     }
     if (type.isInterface()) {
-      for (Class<?> extendInterface: type.getInterfaces()) {
+      for (Class<?> extendInterface : type.getInterfaces()) {
         return isIterableType(extendInterface);
       }
     } else {
@@ -207,7 +228,7 @@ public class Formatter {
         type.getSimpleName(),
         Arrays.stream(
             type.getEnumConstants())
-              .map(val -> "\t" + val.toString()).collect(Collectors.joining("\n")));
+            .map(val -> "\t" + val.toString()).collect(Collectors.joining("\n")));
   }
 
   private static String getArrayFieldTypeName(Class<?> type, Set<Class<?>> extra) {
