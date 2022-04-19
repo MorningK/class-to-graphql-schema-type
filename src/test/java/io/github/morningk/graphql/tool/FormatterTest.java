@@ -1,11 +1,20 @@
 package io.github.morningk.graphql.tool;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import org.junit.jupiter.api.Test;
 
 class FormatterTest {
-
   @Test
-  void formatSchemaType() {
-    System.out.println(Formatter.formatSchemaType(User.class));
+  void formatUserClass() {
+    String result = Formatter.formatSchemaType(User.class);
+    String except = """
+        type User {
+        \tname: String
+        \tage: Int
+        \tid: ID!
+        }
+        """;
+    assertEquals(result, except);
   }
 }

@@ -128,6 +128,10 @@ public class Formatter {
       return name.substring("get".length(), "get".length() + 1).toLowerCase()
           + name.substring("get".length() + 1);
     }
+    if (name.startsWith("is")) {
+      return name.substring("is".length(), "is".length() + 1).toLowerCase()
+          + name.substring("is".length() + 1);
+    }
     return name;
   }
 
