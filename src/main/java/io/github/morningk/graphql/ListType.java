@@ -1,4 +1,4 @@
-package io.github.morningk.graphql.tool;
+package io.github.morningk.graphql;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;

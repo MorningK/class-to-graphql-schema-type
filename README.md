@@ -3,11 +3,13 @@ format Java Class to GraphQL Schema Type
 
 ## Example
 ### Java Class
+
 ```Java
-import io.github.morningk.graphql.tool.NonNull;
-import io.github.morningk.graphql.tool.ScalarType;
+import io.github.morningk.graphql.NonNull;
+import io.github.morningk.graphql.ScalarType;
 
 public class User {
+
   private Long id;
   public String name;
   public int age;
